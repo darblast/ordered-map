@@ -82,6 +82,31 @@ class Node<Key, Value> {
     }
   }
 
+  public update(
+    compare: CompareFn<Key>,
+    key: Key,
+    callback: (currentValue: Value | undefined) => Value,
+    scope?: object
+  ): Node<Key, Value> {
+    const cmp = compare(key, this.key);
+    if (cmp < 0) {
+      if (this.left) {
+        this.left = this.left.update(compare, key, callback, scope);
+      } else {
+        this.left = new Node<Key, Value>(key, callback.call(scope, void 0));
+      }
+    } else if (cmp > 0) {
+      if (this.right) {
+        this.right = this.right.update(compare, key, callback, scope);
+      } else {
+        this.right = new Node<Key, Value>(key, callback.call(scope, void 0));
+      }
+    } else {
+      this.value = callback.call(scope, this.value);
+    }
+    return this;
+  }
+
   public *values(): Generator<Value> {
     if (this.left) {
       yield* this.left.values();
@@ -284,6 +309,33 @@ export class OrderedMap<Key, Value> {
       this._root = new Node<Key, Value>(key, value);
     }
     return this;
+  }
+
+  /**
+   * Updates a map entry using the provided callback.
+   *
+   * The callback receives the current value and must return the new value.
+   *
+   * If the map doesn't have an entry corresponding to the specified key, the callback receives a
+   * value of `undefined`, and `update` will use the value returned by the callback to create a new
+   * entry with that key.
+   *
+   * Complexity: `O(log(N))` comparisons; exactly 1 callback invocation.
+   *
+   * @param key The key of the entry to update.
+   * @param callback A user-defined function that returns the new value.
+   * @param scope An optional object to use as `this` in the callback invocation.
+   */
+  public update(
+    key: Key,
+    callback: (currentValue: Value | undefined) => Value,
+    scope?: object
+  ): void {
+    if (this._root) {
+      this._root = this._root.update(this._compare, key, callback, scope);
+    } else {
+      this._root = new Node<Key, Value>(key, callback.call(scope, void 0));
+    }
   }
 
   /**
