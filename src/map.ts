@@ -287,41 +287,49 @@ export class OrderedMap<Key, Value> {
     yield* this._keys(this._root);
   }
 
+  private _setLeft(node: Node<Key, Value>, key: Key, value: Value): Node<Key, Value> {
+    const child = this._set(node.leftChild, key, value);
+    node.leftChild = child;
+    if (!this._updated) {
+      return node;
+    }
+    if (node.balance < 0) {
+      if (child.balance > 0) {
+        return this._rotateLeftRight(node, child);
+      } else {
+        return this._rotateRight(node, child);
+      }
+    } else {
+      node.balance--;
+      return node;
+    }
+  }
+
+  private _setRight(node: Node<Key, Value>, key: Key, value: Value): Node<Key, Value> {
+    const child = this._set(node.rightChild, key, value);
+    node.rightChild = child;
+    if (!this._updated) {
+      return node;
+    }
+    if (node.balance > 0) {
+      if (child.balance < 0) {
+        return this._rotateRightLeft(node, child);
+      } else {
+        return this._rotateLeft(node, child);
+      }
+    } else {
+      node.balance++;
+      return node;
+    }
+  }
+
   private _set(node: MaybeNode<Key, Value>, key: Key, value: Value): Node<Key, Value> {
     if (node) {
       const cmp = this._compare(key, node.key);
       if (cmp < 0) {
-        const child = this._set(node.leftChild, key, value);
-        node.leftChild = child;
-        if (!this._updated) {
-          return node;
-        }
-        if (node.balance < 0) {
-          if (child.balance > 0) {
-            return this._rotateLeftRight(node, child);
-          } else {
-            return this._rotateRight(node, child);
-          }
-        } else {
-          node.balance--;
-          return node;
-        }
+        return this._setLeft(node, key, value);
       } else if (cmp > 0) {
-        const child = this._set(node.rightChild, key, value);
-        node.rightChild = child;
-        if (!this._updated) {
-          return node;
-        }
-        if (node.balance > 0) {
-          if (child.balance < 0) {
-            return this._rotateRightLeft(node, child);
-          } else {
-            return this._rotateLeft(node, child);
-          }
-        } else {
-          node.balance++;
-          return node;
-        }
+        return this._setRight(node, key, value);
       } else {
         node.value = value;
         return node;

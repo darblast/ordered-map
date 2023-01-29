@@ -75,13 +75,13 @@ describe('OrderedMap', function () {
   // TODO
 
   it('random', function () {
-    const keys = range(100);
+    const keys = range(1000);
     shuffle(keys);
     for (const key of keys) {
       map.set(key, 100 - key);
     }
     keys.sort((lhs, rhs) => lhs - rhs);
-    expect(map.size).to.equal(100);
+    expect(map.size).to.equal(1000);
     expect([...map.keys()]).to.eql(keys);
     map.checkBalance();
   });
