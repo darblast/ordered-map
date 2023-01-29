@@ -2,6 +2,26 @@ import { expect } from 'chai';
 
 import { OrderedMap } from '../dist/map.js';
 
+import { range, shuffle } from '@darblast/utils';
+
+OrderedMap.prototype._checkHeight = function (node) {
+  if (node) {
+    const leftHeight = this._checkHeight(node.leftChild);
+    const rightHeight = this._checkHeight(node.rightHeight);
+    const balance = rightHeight - leftHeight;
+    if (balance < -1 || balance > 1) {
+      throw new Error('out of balance');
+    }
+    return Math.max(leftHeight, rightHeight);
+  } else {
+    return 0;
+  }
+};
+
+OrderedMap.prototype.checkBalance = function () {
+  this._checkHeight(this._root);
+};
+
 describe('OrderedMap', function () {
   const cmp = (lhs, rhs) => lhs - rhs;
   let map;
@@ -18,6 +38,7 @@ describe('OrderedMap', function () {
     expect([...map.entries()]).to.eql([]);
     expect([...map.keys()]).to.eql([]);
     expect([...map.values()]).to.eql([]);
+    map.checkBalance();
   });
 
   it('one element', function () {
@@ -29,6 +50,7 @@ describe('OrderedMap', function () {
     expect([...map.entries()]).to.eql([[12, 23]]);
     expect([...map.keys()]).to.eql([12]);
     expect([...map.values()]).to.eql([23]);
+    map.checkBalance();
   });
 
   it('for each', function () {
@@ -51,4 +73,16 @@ describe('OrderedMap', function () {
   });
 
   // TODO
+
+  it('random', function () {
+    const keys = range(100);
+    shuffle(keys);
+    for (const key of keys) {
+      map.set(key, 100 - key);
+    }
+    keys.sort((lhs, rhs) => lhs - rhs);
+    expect(map.size).to.equal(100);
+    expect([...map.keys()]).to.eql(keys);
+    map.checkBalance();
+  });
 });
