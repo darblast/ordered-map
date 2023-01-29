@@ -12,110 +12,11 @@
 export type CompareFn<Key> = (lhs: Key, rhs: Key) => number;
 
 class Node<Key, Value> {
-  public left: Node<Key, Value> | null = null;
-  public right: Node<Key, Value> | null = null;
+  public leftChild: Node<Key, Value> | null = null;
+  public rightChild: Node<Key, Value> | null = null;
+  public balance = 0;
 
   public constructor(public readonly key: Key, public value: Value) {}
-
-  public *[Symbol.iterator](): Generator<[Key, Value]> {
-    if (this.left) {
-      yield* this.left;
-    }
-    yield [this.key, this.value];
-    if (this.right) {
-      yield* this.right;
-    }
-  }
-
-  public delete(compare: CompareFn<Key>, key: Key): [boolean, MaybeNode<Key, Value>] {
-    const cmp = compare(key, this.key);
-    if (cmp < 0) {
-      if (this.left) {
-        const [deleted, left] = this.left.delete(compare, key);
-        this.left = left;
-        return [deleted, this];
-      } else {
-        return [false, this];
-      }
-    } else if (cmp > 0) {
-      if (this.right) {
-        const [deleted, right] = this.right.delete(compare, key);
-        this.right = right;
-        return [deleted, this];
-      } else {
-        return [false, this];
-      }
-    } else {
-      return [true, null];
-    }
-  }
-
-  public *keys(): Generator<Key> {
-    if (this.left) {
-      yield* this.left.keys();
-    }
-    yield this.key;
-    if (this.right) {
-      yield* this.right.keys();
-    }
-  }
-
-  public set(compare: CompareFn<Key>, key: Key, value: Value): Node<Key, Value> {
-    const cmp = compare(key, this.key);
-    if (cmp < 0) {
-      if (this.left) {
-        this.left = this.left.set(compare, key, value);
-      } else {
-        this.left = new Node<Key, Value>(key, value);
-      }
-      return this;
-    } else if (cmp > 0) {
-      if (this.right) {
-        this.right = this.right.set(compare, key, value);
-      } else {
-        this.right = new Node<Key, Value>(key, value);
-      }
-      return this;
-    } else {
-      this.value = value;
-      return this;
-    }
-  }
-
-  public update(
-    compare: CompareFn<Key>,
-    key: Key,
-    callback: (currentValue: Value | undefined) => Value,
-    scope?: object
-  ): Node<Key, Value> {
-    const cmp = compare(key, this.key);
-    if (cmp < 0) {
-      if (this.left) {
-        this.left = this.left.update(compare, key, callback, scope);
-      } else {
-        this.left = new Node<Key, Value>(key, callback.call(scope, void 0));
-      }
-    } else if (cmp > 0) {
-      if (this.right) {
-        this.right = this.right.update(compare, key, callback, scope);
-      } else {
-        this.right = new Node<Key, Value>(key, callback.call(scope, void 0));
-      }
-    } else {
-      this.value = callback.call(scope, this.value);
-    }
-    return this;
-  }
-
-  public *values(): Generator<Value> {
-    if (this.left) {
-      yield* this.left.values();
-    }
-    yield this.value;
-    if (this.right) {
-      yield* this.right.values();
-    }
-  }
 }
 
 type MaybeNode<Key, Value> = Node<Key, Value> | null;
@@ -139,6 +40,8 @@ export class OrderedMap<Key, Value> {
   private _root: MaybeNode<Key, Value> = null;
   private _size = 0;
 
+  private _updated = false;
+
   /**
    * Constructs an `OrderedMap`.
    *
@@ -154,6 +57,72 @@ export class OrderedMap<Key, Value> {
     }
   }
 
+  private _rotateLeft(parent: Node<Key, Value>, node: Node<Key, Value>): Node<Key, Value> {
+    parent.rightChild = node.leftChild;
+    node.leftChild = parent;
+    if (node.balance) {
+      node.balance = 0;
+      parent.balance = 0;
+    } else {
+      node.balance = -1;
+      parent.balance = 1;
+    }
+    return node;
+  }
+
+  private _rotateRight(parent: Node<Key, Value>, node: Node<Key, Value>): Node<Key, Value> {
+    parent.leftChild = node.rightChild;
+    node.rightChild = parent;
+    if (node.balance) {
+      node.balance = 0;
+      parent.balance = 0;
+    } else {
+      node.balance = 1;
+      parent.balance = -1;
+    }
+    return node;
+  }
+
+  private _rotateRightLeft(parent: Node<Key, Value>, node: Node<Key, Value>): Node<Key, Value> {
+    const child = node.leftChild!;
+    node.leftChild = child.rightChild;
+    parent.rightChild = child.leftChild;
+    child.leftChild = parent;
+    child.rightChild = node;
+    if (child.balance > 0) {
+      parent.balance = -1;
+      node.balance = 0;
+    } else if (child.balance < 0) {
+      parent.balance = 0;
+      node.balance = 1;
+    } else {
+      parent.balance = 0;
+      node.balance = 0;
+    }
+    child.balance = 0;
+    return child;
+  }
+
+  private _rotateLeftRight(parent: Node<Key, Value>, node: Node<Key, Value>): Node<Key, Value> {
+    const child = node.rightChild!;
+    node.rightChild = child.leftChild;
+    parent.leftChild = child.rightChild;
+    child.rightChild = parent;
+    child.leftChild = node;
+    if (child.balance > 0) {
+      parent.balance = 0;
+      node.balance = -1;
+    } else if (child.balance < 0) {
+      parent.balance = 1;
+      node.balance = 0;
+    } else {
+      parent.balance = 0;
+      node.balance = 0;
+    }
+    child.balance = 0;
+    return child;
+  }
+
   /**
    * Returns the number of elements in the map.
    *
@@ -163,13 +132,19 @@ export class OrderedMap<Key, Value> {
     return this._size;
   }
 
+  private *_entries(node: MaybeNode<Key, Value>): Generator<[Key, Value]> {
+    if (node) {
+      yield* this._entries(node.leftChild);
+      yield [node.key, node.value];
+      yield* this._entries(node.rightChild);
+    }
+  }
+
   /**
    * Iterates over the map entries in the order defined by the comparison function.
    */
   public *[Symbol.iterator](): Generator<[Key, Value]> {
-    if (this._root) {
-      yield* this._root;
-    }
+    yield* this._entries(this._root);
   }
 
   /**
@@ -180,6 +155,25 @@ export class OrderedMap<Key, Value> {
   public clear(): void {
     this._root = null;
     this._size = 0;
+  }
+
+  private _delete(node: MaybeNode<Key, Value>, key: Key): MaybeNode<Key, Value> {
+    if (node) {
+      const cmp = this._compare(key, node.key);
+      if (cmp < 0) {
+        node.leftChild = this._delete(node.leftChild, key);
+        return node;
+      } else if (cmp > 0) {
+        node.rightChild = this._delete(node.rightChild, key);
+        return node;
+      } else {
+        this._size--;
+        this._updated = true;
+        return null;
+      }
+    } else {
+      return null;
+    }
   }
 
   /**
@@ -193,22 +187,16 @@ export class OrderedMap<Key, Value> {
    * @returns `true` if the element was found and deleted, `false`, otherwise.
    */
   public delete(key: Key): boolean {
-    if (this._root) {
-      const [deleted, newRoot] = this._root.delete(this._compare, key);
-      this._root = newRoot;
-      return deleted;
-    } else {
-      return false;
-    }
+    this._updated = false;
+    this._root = this._delete(this._root, key);
+    return this._updated;
   }
 
   /**
    * Iterates over the map entries in the order defined by the comparison function.
    */
   public *entries(): Generator<[Key, Value]> {
-    if (this._root) {
-      yield* this._root;
-    }
+    yield* this._entries(this._root);
   }
 
   /**
@@ -251,9 +239,9 @@ export class OrderedMap<Key, Value> {
     while (node) {
       const cmp = this._compare(key, node.key);
       if (cmp < 0) {
-        node = node.left;
+        node = node.leftChild;
       } else if (cmp > 0) {
-        node = node.right;
+        node = node.rightChild;
       } else {
         return node.value;
       }
@@ -274,9 +262,9 @@ export class OrderedMap<Key, Value> {
     while (node) {
       const cmp = this._compare(key, node.key);
       if (cmp < 0) {
-        node = node.left;
+        node = node.leftChild;
       } else if (cmp > 0) {
-        node = node.right;
+        node = node.rightChild;
       } else {
         return true;
       }
@@ -284,12 +272,64 @@ export class OrderedMap<Key, Value> {
     return false;
   }
 
+  private *_keys(node: MaybeNode<Key, Value>): Generator<Key> {
+    if (node) {
+      yield* this._keys(node.leftChild);
+      yield node.key;
+      yield* this._keys(node.rightChild);
+    }
+  }
+
   /**
    * Iterates over the keys in the map in the order defined by the comparison function.
    */
   public *keys(): Generator<Key> {
-    if (this._root) {
-      yield* this._root.keys();
+    yield* this._keys(this._root);
+  }
+
+  private _set(node: MaybeNode<Key, Value>, key: Key, value: Value): Node<Key, Value> {
+    if (node) {
+      const cmp = this._compare(key, node.key);
+      if (cmp < 0) {
+        const child = this._set(node.leftChild, key, value);
+        node.leftChild = child;
+        if (!this._updated) {
+          return node;
+        }
+        if (node.balance < 0) {
+          if (child.balance > 0) {
+            return this._rotateLeftRight(node, child);
+          } else {
+            return this._rotateRight(node, child);
+          }
+        } else {
+          node.balance--;
+          return node;
+        }
+      } else if (cmp > 0) {
+        const child = this._set(node.rightChild, key, value);
+        node.rightChild = child;
+        if (!this._updated) {
+          return node;
+        }
+        if (node.balance > 0) {
+          if (child.balance < 0) {
+            return this._rotateRightLeft(node, child);
+          } else {
+            return this._rotateLeft(node, child);
+          }
+        } else {
+          node.balance++;
+          return node;
+        }
+      } else {
+        node.value = value;
+        return node;
+      }
+    } else {
+      this._size++;
+      this._updated = true;
+      return new Node<Key, Value>(key, value);
     }
   }
 
@@ -303,38 +343,16 @@ export class OrderedMap<Key, Value> {
    * @returns A reference to the map itself.
    */
   public set(key: Key, value: Value): OrderedMap<Key, Value> {
-    if (this._root) {
-      this._root = this._root.set(this._compare, key, value);
-    } else {
-      this._root = new Node<Key, Value>(key, value);
-    }
+    this._updated = false;
+    this._root = this._set(this._root, key, value);
     return this;
   }
 
-  /**
-   * Updates a map entry using the provided callback.
-   *
-   * The callback receives the current value and must return the new value.
-   *
-   * If the map doesn't have an entry corresponding to the specified key, the callback receives a
-   * value of `undefined`, and `update` will use the value returned by the callback to create a new
-   * entry with that key.
-   *
-   * Complexity: `O(log(N))` comparisons; exactly 1 callback invocation.
-   *
-   * @param key The key of the entry to update.
-   * @param callback A user-defined function that returns the new value.
-   * @param scope An optional object to use as `this` in the callback invocation.
-   */
-  public update(
-    key: Key,
-    callback: (currentValue: Value | undefined) => Value,
-    scope?: object
-  ): void {
-    if (this._root) {
-      this._root = this._root.update(this._compare, key, callback, scope);
-    } else {
-      this._root = new Node<Key, Value>(key, callback.call(scope, void 0));
+  public *_values(node: MaybeNode<Key, Value>): Generator<Value> {
+    if (node) {
+      yield* this._values(node.leftChild);
+      yield node.value;
+      yield* this._values(node.rightChild);
     }
   }
 
@@ -343,8 +361,6 @@ export class OrderedMap<Key, Value> {
    * comparison function.
    */
   public *values(): Generator<Value> {
-    if (this._root) {
-      yield* this._root.values();
-    }
+    yield* this._values(this._root);
   }
 }

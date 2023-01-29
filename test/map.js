@@ -15,6 +15,20 @@ describe('OrderedMap', function () {
     expect(map.get(42)).to.equal(undefined);
     expect(map.has(42)).to.equal(false);
     expect([...map]).to.eql([]);
+    expect([...map.entries()]).to.eql([]);
+    expect([...map.keys()]).to.eql([]);
+    expect([...map.values()]).to.eql([]);
+  });
+
+  it('one element', function () {
+    map.set(12, 23);
+    expect(map.size).to.equal(1);
+    expect(map.get(12)).to.equal(23);
+    expect(map.has(12)).to.equal(true);
+    expect([...map]).to.eql([[12, 23]]);
+    expect([...map.entries()]).to.eql([[12, 23]]);
+    expect([...map.keys()]).to.eql([12]);
+    expect([...map.values()]).to.eql([23]);
   });
 
   it('for each', function () {
@@ -34,39 +48,6 @@ describe('OrderedMap', function () {
       [75, 76],
       [86, 87],
     ]);
-  });
-
-  describe('has', function () {
-    it('empty', function () {
-      expect(map.has(42)).to.equal(false);
-    });
-
-    it('one element', function () {
-      map.set(42, 53);
-      expect(map.has(1)).to.equal(false);
-      expect(map.has(2)).to.equal(false);
-      expect(map.has(42)).to.equal(true);
-      expect(map.has(53)).to.equal(false);
-      expect(map.has(64)).to.equal(false);
-    });
-
-    it('two elements', function () {
-      map.set(42, 43);
-      map.set(53, 54);
-      expect(map.has(1)).to.equal(false);
-      expect(map.has(2)).to.equal(false);
-      expect(map.has(42)).to.equal(true);
-      expect(map.has(53)).to.equal(true);
-      expect(map.has(64)).to.equal(false);
-    });
-  });
-
-  it('keys', function () {
-    map.set(1, 2);
-    map.set(3, 4);
-    map.set(5, 6);
-    map.set(7, 8);
-    expect([...map.keys()]).to.eql([1, 3, 5, 7]);
   });
 
   // TODO
