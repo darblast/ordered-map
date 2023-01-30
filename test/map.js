@@ -9,6 +9,9 @@ OrderedMap.prototype._checkHeight = function (node) {
     const leftHeight = this._checkHeight(node.leftChild);
     const rightHeight = this._checkHeight(node.rightHeight);
     const balance = rightHeight - leftHeight;
+    if (balance !== node.balance) {
+      throw new Error(`wrong balance: ${node.balance} vs ${balance}`);
+    }
     if (balance < -1 || balance > 1) {
       throw new Error('out of balance');
     }
