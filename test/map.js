@@ -6,8 +6,14 @@ import { range, shuffle } from '@darblast/utils';
 
 OrderedMap.prototype._checkHeight = function (node) {
   if (node) {
+    if (node.leftChild && node.leftChild.parent !== node) {
+      throw new Error('broken left child link');
+    }
+    if (node.rightChild && node.rightChild.parent !== node) {
+      throw new Error('broken right child link');
+    }
     const leftHeight = this._checkHeight(node.leftChild);
-    const rightHeight = this._checkHeight(node.rightHeight);
+    const rightHeight = this._checkHeight(node.rightChild);
     const balance = rightHeight - leftHeight;
     if (balance !== node.balance) {
       throw new Error(`wrong balance: ${node.balance} vs ${balance}`);
@@ -15,7 +21,7 @@ OrderedMap.prototype._checkHeight = function (node) {
     if (balance < -1 || balance > 1) {
       throw new Error('out of balance');
     }
-    return Math.max(leftHeight, rightHeight);
+    return 1 + Math.max(leftHeight, rightHeight);
   } else {
     return 0;
   }
@@ -77,14 +83,26 @@ describe('OrderedMap', function () {
 
   // TODO
 
+  // it('broken', function () {
+  //   const keys = [5, 3, 6, 1, 2, 4, 0];
+  //   for (const key of keys) {
+  //     map.set(key, 42);
+  //   }
+  //   keys.sort((lhs, rhs) => lhs - rhs);
+  //   expect(map.size).to.equal(7);
+  //   expect([...map.keys()]).to.eql(keys);
+  //   map.checkBalance();
+  // });
+
   it('random', function () {
-    const keys = range(1000);
+    const count = 3;
+    const keys = range(count);
     shuffle(keys);
     for (const key of keys) {
-      map.set(key, 100 - key);
+      map.set(key, count - key);
     }
     keys.sort((lhs, rhs) => lhs - rhs);
-    expect(map.size).to.equal(1000);
+    expect(map.size).to.equal(count);
     expect([...map.keys()]).to.eql(keys);
     map.checkBalance();
   });

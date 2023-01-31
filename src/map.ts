@@ -12,6 +12,7 @@
 export type CompareFn<Key> = (lhs: Key, rhs: Key) => number;
 
 class Node<Key, Value> {
+  public parent: Node<Key, Value> | null = null;
   public leftChild: Node<Key, Value> | null = null;
   public rightChild: Node<Key, Value> | null = null;
   public balance = 0;
@@ -40,8 +41,6 @@ export class OrderedMap<Key, Value> {
   private _root: MaybeNode<Key, Value> = null;
   private _size = 0;
 
-  private _updated = false;
-
   /**
    * Constructs an `OrderedMap`.
    *
@@ -58,8 +57,14 @@ export class OrderedMap<Key, Value> {
   }
 
   private _rotateLeft(parent: Node<Key, Value>, node: Node<Key, Value>): Node<Key, Value> {
-    parent.rightChild = node.leftChild;
+    node.parent = parent.parent;
+    const child = node.leftChild;
+    parent.rightChild = child;
+    if (child) {
+      child.parent = parent;
+    }
     node.leftChild = parent;
+    parent.parent = node;
     if (node.balance) {
       node.balance = 0;
       parent.balance = 0;
@@ -71,8 +76,14 @@ export class OrderedMap<Key, Value> {
   }
 
   private _rotateRight(parent: Node<Key, Value>, node: Node<Key, Value>): Node<Key, Value> {
-    parent.leftChild = node.rightChild;
+    node.parent = parent.parent;
+    const child = node.rightChild;
+    parent.leftChild = child;
+    if (child) {
+      child.parent = parent;
+    }
     node.rightChild = parent;
+    parent.parent = node;
     if (node.balance) {
       node.balance = 0;
       parent.balance = 0;
@@ -85,10 +96,21 @@ export class OrderedMap<Key, Value> {
 
   private _rotateRightLeft(parent: Node<Key, Value>, node: Node<Key, Value>): Node<Key, Value> {
     const child = node.leftChild!;
-    node.leftChild = child.rightChild;
-    parent.rightChild = child.leftChild;
-    child.leftChild = parent;
+    child.parent = parent.parent;
+    let temp = child.rightChild;
+    node.leftChild = temp;
+    if (temp) {
+      temp.parent = node;
+    }
     child.rightChild = node;
+    node.parent = child;
+    temp = child.leftChild;
+    parent.rightChild = temp;
+    if (temp) {
+      temp.parent = parent;
+    }
+    child.leftChild = parent;
+    parent.parent = child;
     if (child.balance > 0) {
       parent.balance = -1;
       node.balance = 0;
@@ -105,10 +127,21 @@ export class OrderedMap<Key, Value> {
 
   private _rotateLeftRight(parent: Node<Key, Value>, node: Node<Key, Value>): Node<Key, Value> {
     const child = node.rightChild!;
-    node.rightChild = child.leftChild;
-    parent.leftChild = child.rightChild;
-    child.rightChild = parent;
+    child.parent = parent.parent;
+    let temp = child.leftChild;
+    node.rightChild = temp;
+    if (temp) {
+      temp.parent = node;
+    }
     child.leftChild = node;
+    node.parent = child;
+    temp = child.rightChild;
+    parent.leftChild = child;
+    if (temp) {
+      temp.parent = parent;
+    }
+    child.rightChild = parent;
+    parent.parent = child;
     if (child.balance > 0) {
       parent.balance = 0;
       node.balance = -1;
@@ -158,20 +191,18 @@ export class OrderedMap<Key, Value> {
   }
 
   private _delete(node: MaybeNode<Key, Value>, key: Key): MaybeNode<Key, Value> {
-    if (node) {
-      const cmp = this._compare(key, node.key);
-      if (cmp < 0) {
-        node.leftChild = this._delete(node.leftChild, key);
-        return node;
-      } else if (cmp > 0) {
-        node.rightChild = this._delete(node.rightChild, key);
-        return node;
-      } else {
-        this._size--;
-        this._updated = true;
-        return null;
-      }
+    if (!node) {
+      return null;
+    }
+    const cmp = this._compare(key, node.key);
+    if (cmp < 0) {
+      node.leftChild = this._delete(node.leftChild, key);
+      return node;
+    } else if (cmp > 0) {
+      node.rightChild = this._delete(node.rightChild, key);
+      return node;
     } else {
+      this._size--;
       return null;
     }
   }
@@ -187,9 +218,8 @@ export class OrderedMap<Key, Value> {
    * @returns `true` if the element was found and deleted, `false`, otherwise.
    */
   public delete(key: Key): boolean {
-    this._updated = false;
     this._root = this._delete(this._root, key);
-    return this._updated;
+    return true;
   }
 
   /**
@@ -287,60 +317,6 @@ export class OrderedMap<Key, Value> {
     yield* this._keys(this._root);
   }
 
-  private _setLeft(node: Node<Key, Value>, key: Key, value: Value): Node<Key, Value> {
-    const child = this._set(node.leftChild, key, value);
-    node.leftChild = child;
-    if (!this._updated) {
-      return node;
-    }
-    if (node.balance < 0) {
-      if (child.balance > 0) {
-        return this._rotateLeftRight(node, child);
-      } else {
-        return this._rotateRight(node, child);
-      }
-    } else {
-      node.balance--;
-      return node;
-    }
-  }
-
-  private _setRight(node: Node<Key, Value>, key: Key, value: Value): Node<Key, Value> {
-    const child = this._set(node.rightChild, key, value);
-    node.rightChild = child;
-    if (!this._updated) {
-      return node;
-    }
-    if (node.balance > 0) {
-      if (child.balance < 0) {
-        return this._rotateRightLeft(node, child);
-      } else {
-        return this._rotateLeft(node, child);
-      }
-    } else {
-      node.balance++;
-      return node;
-    }
-  }
-
-  private _set(node: MaybeNode<Key, Value>, key: Key, value: Value): Node<Key, Value> {
-    if (node) {
-      const cmp = this._compare(key, node.key);
-      if (cmp < 0) {
-        return this._setLeft(node, key, value);
-      } else if (cmp > 0) {
-        return this._setRight(node, key, value);
-      } else {
-        node.value = value;
-        return node;
-      }
-    } else {
-      this._size++;
-      this._updated = true;
-      return new Node<Key, Value>(key, value);
-    }
-  }
-
   /**
    * Inserts or updates an entry in the map.
    *
@@ -351,8 +327,76 @@ export class OrderedMap<Key, Value> {
    * @returns A reference to the map itself.
    */
   public set(key: Key, value: Value): OrderedMap<Key, Value> {
-    this._updated = false;
-    this._root = this._set(this._root, key, value);
+    let parent = null;
+    let node = this._root;
+    let cmp: number;
+    while (node) {
+      cmp = this._compare(key, node.key);
+      if (cmp < 0) {
+        parent = node;
+        node = node.leftChild;
+      } else if (cmp > 0) {
+        parent = node;
+        node = node.rightChild;
+      } else {
+        node.value = value;
+        return this;
+      }
+    }
+    this._size++;
+    node = new Node<Key, Value>(key, value);
+    node.parent = parent;
+    if (parent) {
+      if (cmp! < 0) {
+        parent.leftChild = node;
+      } else {
+        parent.rightChild = node;
+      }
+    } else {
+      this._root = node;
+    }
+    let child = node;
+    let temp: MaybeNode<Key, Value> = null;
+    for (node = parent; node; node = node!.parent) {
+      if (child !== node.rightChild) {
+        if (node.balance < 0) {
+          if (child.balance > 0) {
+            temp = this._rotateLeftRight(node, child);
+          } else {
+            temp = this._rotateRight(node, child);
+          }
+        } else if (--node.balance < 0) {
+          child = node;
+          continue;
+        } else {
+          break;
+        }
+      } else {
+        if (node.balance > 0) {
+          if (child.balance < 0) {
+            temp = this._rotateRightLeft(node, child);
+          } else {
+            temp = this._rotateLeft(node, child);
+          }
+        } else if (++node.balance > 0) {
+          child = node;
+          continue;
+        } else {
+          break;
+        }
+      }
+      parent = temp.parent;
+      if (parent) {
+        if (node !== parent.rightChild) {
+          parent.leftChild = temp;
+        } else {
+          parent.rightChild = temp;
+        }
+      } else {
+        this._root = temp;
+      }
+      break;
+    }
     return this;
   }
 
