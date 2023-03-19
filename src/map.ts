@@ -136,7 +136,7 @@ export class OrderedMap<Key, Value> {
     child.leftChild = node;
     node.parent = child;
     temp = child.rightChild;
-    parent.leftChild = child;
+    parent.leftChild = temp;
     if (temp) {
       temp.parent = parent;
     }

@@ -83,19 +83,8 @@ describe('OrderedMap', function () {
 
   // TODO
 
-  // it('broken', function () {
-  //   const keys = [5, 3, 6, 1, 2, 4, 0];
-  //   for (const key of keys) {
-  //     map.set(key, 42);
-  //   }
-  //   keys.sort((lhs, rhs) => lhs - rhs);
-  //   expect(map.size).to.equal(7);
-  //   expect([...map.keys()]).to.eql(keys);
-  //   map.checkBalance();
-  // });
-
   it('random', function () {
-    const count = 3;
+    const count = 1000;
     const keys = range(count);
     shuffle(keys);
     for (const key of keys) {
