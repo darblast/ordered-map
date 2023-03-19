@@ -190,23 +190,6 @@ export class OrderedMap<Key, Value> {
     this._size = 0;
   }
 
-  private _delete(node: MaybeNode<Key, Value>, key: Key): MaybeNode<Key, Value> {
-    if (!node) {
-      return null;
-    }
-    const cmp = this._compare(key, node.key);
-    if (cmp < 0) {
-      node.leftChild = this._delete(node.leftChild, key);
-      return node;
-    } else if (cmp > 0) {
-      node.rightChild = this._delete(node.rightChild, key);
-      return node;
-    } else {
-      this._size--;
-      return null;
-    }
-  }
-
   /**
    * Removes the element with the specified key from the map.
    *
@@ -218,7 +201,69 @@ export class OrderedMap<Key, Value> {
    * @returns `true` if the element was found and deleted, `false`, otherwise.
    */
   public delete(key: Key): boolean {
-    this._root = this._delete(this._root, key);
+    let found = false;
+    let parent = null;
+    let node = this._root;
+    let cmp: number;
+    while (node) {
+      cmp = this._compare(key, node.key);
+      if (cmp < 0) {
+        parent = node;
+        node = node.leftChild;
+      } else if (cmp > 0) {
+        parent = node;
+        node = node.rightChild;
+      } else {
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      return false;
+    }
+    node = node!;
+    this._size--;
+    if (node.rightChild) {
+      let successor = node.rightChild;
+      while (successor.leftChild) {
+        successor = successor.leftChild;
+      }
+      if (successor.rightChild) {
+        successor.parent!.leftChild = successor.rightChild;
+        if (successor.rightChild) {
+          successor.rightChild.parent = successor.parent;
+        }
+      }
+      if (parent) {
+        if (node !== parent.leftChild) {
+          parent.rightChild = successor;
+        } else {
+          parent.leftChild = successor;
+        }
+      }
+      successor.parent = parent;
+      successor.leftChild = node.leftChild;
+      if (node.leftChild) {
+        node.leftChild.parent = successor;
+      }
+      successor.rightChild = node.rightChild;
+      if (node.rightChild) {
+        node.rightChild.parent = successor;
+      }
+    } else if (parent) {
+      if (node !== parent.leftChild) {
+        parent.rightChild = node.leftChild;
+      } else {
+        parent.leftChild = node.leftChild;
+      }
+      if (node.leftChild) {
+        node.leftChild.parent = parent;
+      }
+    } else {
+      this._root = node.leftChild;
+      return true;
+    }
+    // TODO: rebalance
     return true;
   }
 
@@ -400,7 +445,7 @@ export class OrderedMap<Key, Value> {
     return this;
   }
 
-  public *_values(node: MaybeNode<Key, Value>): Generator<Value> {
+  private *_values(node: MaybeNode<Key, Value>): Generator<Value> {
     if (node) {
       yield* this._values(node.leftChild);
       yield node.value;

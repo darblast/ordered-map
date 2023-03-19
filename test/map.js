@@ -81,18 +81,62 @@ describe('OrderedMap', function () {
     ]);
   });
 
+  it('delete from empty', function () {
+    expect(map.delete(42)).to.equal(false);
+    expect(map.size).to.equal(0);
+    expect(map.get(42)).to.equal(undefined);
+    expect(map.has(42)).to.equal(false);
+    expect([...map]).to.eql([]);
+    expect([...map.entries()]).to.eql([]);
+    expect([...map.keys()]).to.eql([]);
+    expect([...map.values()]).to.eql([]);
+    map.checkBalance();
+  });
+
+  it('delete one element', function () {
+    map.set(123, 42);
+    expect(map.delete(123)).to.equal(true);
+    expect(map.size).to.equal(0);
+    expect(map.get(42)).to.equal(undefined);
+    expect(map.has(42)).to.equal(false);
+    expect([...map]).to.eql([]);
+    expect([...map.entries()]).to.eql([]);
+    expect([...map.keys()]).to.eql([]);
+    expect([...map.values()]).to.eql([]);
+    map.checkBalance();
+  });
+
   // TODO
 
-  it('random', function () {
+  it('random set', function () {
     const count = 1000;
     const keys = range(count);
     shuffle(keys);
     for (const key of keys) {
       map.set(key, count - key);
     }
+    map.checkBalance();
     keys.sort((lhs, rhs) => lhs - rhs);
     expect(map.size).to.equal(count);
     expect([...map.keys()]).to.eql(keys);
     map.checkBalance();
   });
+
+  // it('random delete', function () {
+  //   const count = 1000;
+  //   const keys = range(count);
+  //   shuffle(keys);
+  //   for (const key of keys) {
+  //     map.set(key, count - key);
+  //   }
+  //   map.checkBalance();
+  //   shuffle(keys);
+  //   for (let i = 0; i < count / 3; i++) {
+  //     map.delete(keys.pop());
+  //   }
+  //   keys.sort((lhs, rhs) => lhs - rhs);
+  //   expect(map.size).to.equal(count);
+  //   expect([...map.keys()]).to.eql(keys);
+  //   map.checkBalance();
+  // });
 });
