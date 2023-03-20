@@ -190,6 +190,60 @@ export class OrderedMap<Key, Value> {
     this._size = 0;
   }
 
+  private _replaceNode(node: Node<Key, Value>, replacement: MaybeNode<Key, Value>): void {
+    const parent = node.parent;
+    if (parent) {
+      if (node !== parent.leftChild) {
+        parent.rightChild = replacement;
+      } else {
+        parent.leftChild = replacement;
+      }
+    } else {
+      this._root = replacement;
+    }
+    if (replacement) {
+      replacement.parent = parent;
+      replacement.leftChild = node.leftChild;
+      replacement.rightChild = node.rightChild;
+    }
+  }
+
+  private _replaceWithLeftChild(node: Node<Key, Value>): void {
+    const parent = node.parent;
+    const child = node.leftChild;
+    if (parent) {
+      if (node !== parent.leftChild) {
+        parent.rightChild = child;
+      } else {
+        parent.leftChild = child;
+      }
+    } else {
+      this._root = child;
+    }
+    if (child) {
+      child.parent = parent;
+      child.rightChild = node.rightChild;
+    }
+  }
+
+  private _replaceWithRightChild(node: Node<Key, Value>): void {
+    const parent = node.parent;
+    const child = node.rightChild;
+    if (parent) {
+      if (node !== parent.leftChild) {
+        parent.rightChild = child;
+      } else {
+        parent.leftChild = child;
+      }
+    } else {
+      this._root = child;
+    }
+    if (child) {
+      child.parent = parent;
+      child.leftChild = node.leftChild;
+    }
+  }
+
   /**
    * Removes the element with the specified key from the map.
    *
@@ -202,16 +256,12 @@ export class OrderedMap<Key, Value> {
    */
   public delete(key: Key): boolean {
     let found = false;
-    let parent = null;
     let node = this._root;
-    let cmp: number;
     while (node) {
-      cmp = this._compare(key, node.key);
+      const cmp = this._compare(key, node.key);
       if (cmp < 0) {
-        parent = node;
         node = node.leftChild;
       } else if (cmp > 0) {
-        parent = node;
         node = node.rightChild;
       } else {
         found = true;
@@ -223,45 +273,23 @@ export class OrderedMap<Key, Value> {
     }
     node = node!;
     this._size--;
-    if (node.rightChild) {
-      let successor = node.rightChild;
-      while (successor.leftChild) {
-        successor = successor.leftChild;
-      }
-      if (successor.rightChild) {
-        successor.parent!.leftChild = successor.rightChild;
-        if (successor.rightChild) {
-          successor.rightChild.parent = successor.parent;
-        }
-      }
-      if (parent) {
-        if (node !== parent.leftChild) {
-          parent.rightChild = successor;
-        } else {
-          parent.leftChild = successor;
-        }
-      }
-      successor.parent = parent;
-      successor.leftChild = node.leftChild;
-      if (node.leftChild) {
-        node.leftChild.parent = successor;
-      }
-      successor.rightChild = node.rightChild;
-      if (node.rightChild) {
-        node.rightChild.parent = successor;
-      }
-    } else if (parent) {
-      if (node !== parent.leftChild) {
-        parent.rightChild = node.leftChild;
-      } else {
-        parent.leftChild = node.leftChild;
-      }
-      if (node.leftChild) {
-        node.leftChild.parent = parent;
-      }
-    } else {
-      this._root = node.leftChild;
+    if (!node.leftChild) {
+      this._replaceWithRightChild(node);
       return true;
+    } else if (!node.rightChild) {
+      this._replaceWithLeftChild(node);
+      return true;
+    } else {
+      let successor = node.rightChild;
+      if (successor.leftChild) {
+        while (successor.leftChild) {
+          successor = successor.leftChild;
+        }
+        this._replaceWithRightChild(successor);
+        this._replaceNode(node, successor);
+      } else {
+        this._replaceWithRightChild(node);
+      }
     }
     // TODO: rebalance
     return true;

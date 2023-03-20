@@ -106,6 +106,38 @@ describe('OrderedMap', function () {
     map.checkBalance();
   });
 
+  it('delete 1st element out of 2', function () {
+    map.set(123, 43);
+    map.set(124, 42);
+    expect(map.delete(123)).to.equal(true);
+    expect(map.size).to.equal(1);
+    expect(map.get(123)).to.equal(undefined);
+    expect(map.has(123)).to.equal(false);
+    expect(map.get(124)).to.equal(42);
+    expect(map.has(124)).to.equal(true);
+    expect([...map]).to.eql([[124, 42]]);
+    expect([...map.entries()]).to.eql([[124, 42]]);
+    expect([...map.keys()]).to.eql([124]);
+    expect([...map.values()]).to.eql([42]);
+    map.checkBalance();
+  });
+
+  it('delete 2nd element out of 2', function () {
+    map.set(123, 43);
+    map.set(124, 42);
+    expect(map.delete(124)).to.equal(true);
+    expect(map.size).to.equal(1);
+    expect(map.get(123)).to.equal(43);
+    expect(map.has(123)).to.equal(true);
+    expect(map.get(124)).to.equal(undefined);
+    expect(map.has(124)).to.equal(false);
+    expect([...map]).to.eql([[123, 43]]);
+    expect([...map.entries()]).to.eql([[123, 43]]);
+    expect([...map.keys()]).to.eql([123]);
+    expect([...map.values()]).to.eql([43]);
+    // map.checkBalance();
+  });
+
   // TODO
 
   it('random set', function () {
