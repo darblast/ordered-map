@@ -97,8 +97,8 @@ describe('OrderedMap', function () {
     map.set(123, 42);
     expect(map.delete(123)).to.equal(true);
     expect(map.size).to.equal(0);
-    expect(map.get(42)).to.equal(undefined);
-    expect(map.has(42)).to.equal(false);
+    expect(map.get(123)).to.equal(undefined);
+    expect(map.has(123)).to.equal(false);
     expect([...map]).to.eql([]);
     expect([...map.entries()]).to.eql([]);
     expect([...map.keys()]).to.eql([]);
@@ -114,12 +114,11 @@ describe('OrderedMap', function () {
     shuffle(keys);
     for (const key of keys) {
       map.set(key, count - key);
+      map.checkBalance();
     }
-    map.checkBalance();
     keys.sort((lhs, rhs) => lhs - rhs);
     expect(map.size).to.equal(count);
     expect([...map.keys()]).to.eql(keys);
-    map.checkBalance();
   });
 
   // it('random delete', function () {
@@ -131,12 +130,12 @@ describe('OrderedMap', function () {
   //   }
   //   map.checkBalance();
   //   shuffle(keys);
-  //   for (let i = 0; i < count / 3; i++) {
+  //   for (let i = 0; i < count / 2; i++) {
   //     map.delete(keys.pop());
+  //     map.checkBalance();
   //   }
   //   keys.sort((lhs, rhs) => lhs - rhs);
   //   expect(map.size).to.equal(count);
   //   expect([...map.keys()]).to.eql(keys);
-  //   map.checkBalance();
   // });
 });
